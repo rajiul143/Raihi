@@ -1,0 +1,1704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <!-- For iOS standalone mode -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Nexus Wave - Music Player</title>
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    /* ===== Base & Reset ===== */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body::before {
+  content: "";
+  position: fixed; /* ya absolute, lekin fixed se background scroll hone par bhi wahi rahega */
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url('image.jpg') no-repeat center center/cover;
+  opacity: 100;
+  z-index: -1; /* Ensure karta hai ki background sabke peeche rahe */
+}
+
+      background: linear-gradient(135deg, #02126d, #031086);
+      font-family: 'Montserrat', sans-serif;
+      color: #ffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+    }
+    /* ===== Music Player Container (Glassmorphism Style) ===== */
+    .player-container {
+      position: relative;
+      width: 100%;
+      max-width: 480px;
+      background: rgba(4, 22, 75, 0.932);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 2rem;
+      box-shadow: 0 8px 32px rgba(4, 22, 75, 0.932);
+      overflow: hidden;
+      z-index: 1;
+    }
+    .top-controls {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      display: flex;
+      gap: 0.5rem;
+    }
+    .top-controls button {
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.3s;
+      font-size: 1.2rem;
+      position: relative;
+    }
+    .top-controls button:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+    /* Online Users Count Style */
+    #onlineUsersBtn span {
+      position: absolute;
+      top: -5px;
+      right: -5px;
+      background: #2575fc;
+      color: #fff;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: bold;
+    }
+    .album-art {
+      width: 260px;
+      height: 260px;
+      margin: 3rem auto 1.5rem;
+      border-radius: 15px;
+      overflow: hidden;
+      position: relative;
+      border: 2px solid rgba(0, 0, 0, 0.3);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+      transition: transform 0.4s ease;
+    }
+    .album-art img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .track-info {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+    .track-info .track-title {
+      font-size: 1.8rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: #feffff;
+    }
+    .track-info .artist-name {
+      font-size: 1rem;
+      color: #feffff;
+    }
+    .progress-container {
+      background: rgba(255, 255, 255, 0.2);
+      height: 8px;
+      border-radius: 5px;
+      margin: 1.5rem 0;
+      cursor: pointer;
+      overflow: hidden;
+    }
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #6a11cb, #2575fc);
+      transition: width 0.2s ease;
+    }
+    .time-display {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.9rem;
+      color: #a0aec0;
+      margin-bottom: 1rem;
+    }
+    .controls {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .controls button {
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 1.2rem;
+      cursor: pointer;
+      transition: background 0.3s, transform 0.3s;
+    }
+    .controls button:hover {
+      background: rgba(255, 255, 255, 0.3);
+      transform: scale(1.1);
+    }
+    .controls .play-btn {
+      background: linear-gradient(90deg, #2411cb, #2575fc);
+      font-size: 1.5rem;
+      width: 60px;
+      height: 60px;
+    }
+    .search-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(20, 30, 48, 0.95);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: center;
+      padding-top: 2rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.4s ease;
+      z-index: 100;
+    }
+    .search-overlay.active {
+      opacity: 1;
+      pointer-events: all;
+    }
+    .search-bar {
+      background: rgba(255, 255, 255, 0.15);
+      padding: 1rem 1.5rem;
+      border-radius: 8px;
+      width: 90%;
+      max-width: 500px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+      animation: slideDown 0.4s ease;
+    }
+    @keyframes slideDown {
+      from { transform: translateY(-20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .search-bar input[type="text"] {
+      width: 100%;
+      padding: 0.75rem;
+      border: none;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.2);
+      color: #fff;
+      font-size: 1rem;
+      outline: none;
+    }
+    .suggestions {
+      list-style: none;
+      margin-top: 0.5rem;
+      max-height: 200px;
+      overflow-y: auto;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    .suggestions li {
+      padding: 0.75rem 1rem;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .suggestions li:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+    .volume-overlay {
+      position: fixed;
+      bottom: 1rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
+      padding: 1rem 1.5rem;
+      border-radius: 8px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+      z-index: 101;
+    }
+    .volume-overlay.active {
+      opacity: 1;
+      pointer-events: all;
+    }
+    .volume-overlay .volume-slider {
+      -webkit-appearance: none;
+      width: 200px;
+      height: 5px;
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 5px;
+      outline: none;
+      transition: background 0.3s;
+    }
+    .volume-overlay .volume-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      background: #6a11cb;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .volume-overlay .volume-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+    @media (max-width: 480px) {
+      .album-art { width: 220px; height: 220px; }
+      .player-container { padding: 1.5rem; }
+    }
+    
+    /* ===== Sign Up Overlay & Form ===== */
+    .signup-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #141E30, #243B55);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      animation: fadeIn 0.8s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    .signup-form {
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(12px);
+      border-radius: 20px;
+      padding: 2.5rem;
+      width: 90%;
+      max-width: 400px;
+      box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+      color: #fff;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .signup-form h2 {
+      margin-bottom: 1rem;
+    }
+    .signup-form label {
+      display: block;
+      margin: 1rem 0 0.5rem;
+      text-align: left;
+      font-weight: 600;
+    }
+    .signup-form input {
+      width: 100%;
+      padding: 0.75rem;
+      border: none;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      background: rgba(255, 255, 255, 0.2);
+      color: #fff;
+      font-size: 1rem;
+    }
+    .signup-form input::placeholder {
+      color: #e0e0e0;
+    }
+    .signup-form .next-btn,
+    .signup-form .prev-btn {
+      background: linear-gradient(135deg, #6a11cb, #2575fc);
+      border: none;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.3s;
+      margin: 0.5rem;
+    }
+    .signup-form .next-btn:hover,
+    .signup-form .prev-btn:hover {
+      background: linear-gradient(135deg, #2575fc, #6a11cb);
+    }
+    .form-step {
+      opacity: 0;
+      transition: opacity 0.5s ease;
+      position: absolute;
+      width: 100%;
+      left: 0;
+      top: 0;
+      pointer-events: none;
+    }
+    .form-step.active {
+      opacity: 1;
+      position: relative;
+      pointer-events: all;
+    }
+    
+    /* ===== Custom Birth Year Selector ===== */
+    .year-selector {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 1rem 0 1.5rem;
+    }
+    .year-btn {
+      background: linear-gradient(135deg, #6a11cb, #2575fc);
+      border: none;
+      color: #fff;
+      font-size: 1.5rem;
+      padding: 0.5rem 1rem;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: transform 0.3s ease;
+      margin: 0 1rem;
+    }
+    .year-btn:hover {
+      transform: scale(1.1);
+    }
+    .year-display {
+      font-size: 2rem;
+      font-weight: bold;
+      width: 80px;
+      text-align: center;
+      background: rgba(255,255,255,0.2);
+      padding: 0.5rem;
+      border-radius: 8px;
+    }
+    .year-display.animate {
+      animation: pulse 0.5s ease;
+    }
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); }
+    }
+    
+    /* ===== Online Users Overlay ===== */
+    .online-users-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(20, 30, 48, 0.95);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.4s ease;
+      z-index: 150;
+    }
+    .online-users-overlay.active {
+      opacity: 1;
+      pointer-events: all;
+    }
+    .online-users-modal {
+      background: rgba(255, 255, 255, 0.15);
+      padding: 2rem;
+      border-radius: 8px;
+      width: 90%;
+      max-width: 400px;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+      color: #fff;
+      text-align: center;
+    }
+    .online-users-modal h3 {
+      margin-bottom: 1rem;
+    }
+    .online-users-modal ul {
+      list-style: none;
+      padding: 0;
+      max-height: 300px;
+      overflow-y: auto;
+      text-align: left;
+      margin-bottom: 1rem;
+    }
+    .online-users-modal ul li {
+      padding: 0.5rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    .online-users-modal button {
+      background: linear-gradient(135deg, #6a11cb, #2575fc);
+      border: none;
+      border-radius: 8px;
+      padding: 0.5rem 1rem;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .online-users-modal button:hover {
+      background: linear-gradient(135deg, #2575fc, #6a11cb);
+    }
+  </style>
+</head>
+<body>
+  <!-- ===== Sign Up Overlay ===== -->
+  <div class="signup-container" id="signupContainer">
+    <div class="signup-form">
+      <!-- Step 1: Name -->
+      <div class="form-step active" data-step="1">
+        <h2>Sign Up</h2>
+        <label for="name">Name</label>
+        <input type="text" id="name" placeholder="Enter your name" />
+        <button id="nextStep1" class="next-btn">Next</button>
+      </div>
+      <!-- Step 2: Birth Year Selector -->
+      <div class="form-step" data-step="2">
+        <h2>Sign Up</h2>
+        <label for="birthYear">Birth Year</label>
+        <div class="year-selector">
+          <button class="year-btn" id="yearDown">▼</button>
+          <div class="year-display" id="yearDisplay">1990</div>
+          <button class="year-btn" id="yearUp">▲</button>
+        </div>
+        <button id="prevStep2" class="prev-btn">Previous</button>
+        <button id="nextStep2" class="next-btn">Next</button>
+      </div>
+      <!-- Step 3: Gmail -->
+      <div class="form-step" data-step="3">
+        <h2>Sign Up</h2>
+        <label for="gmail">Gmail</label>
+        <input type="email" id="gmail" placeholder="Enter your Gmail" />
+        <button id="prevStep3" class="prev-btn">Previous</button>
+        <button id="signupBtn" class="next-btn">Sign Up</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Music Player Container ===== -->
+  <div class="player-container">
+    <div class="top-controls">
+      <button id="searchToggle">⌕</button>
+      <!-- Changed emoji from eye to 👀 -->
+      <button id="onlineUsersBtn">👀<span id="onlineCount">0</span></button>
+    </div>
+    <div class="album-art" id="albumArtContainer">
+      <img src="cover/cover1.jpg" alt="Album Art" id="albumArt" />
+    </div>
+    <div class="track-info">
+      <div class="track-title" id="trackTitle">Unknown Track</div>
+      <div class="artist-name" id="artistName">Unknown Artist</div>
+    </div>
+    <div class="progress-container" id="progressContainer">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+    <div class="time-display">
+      <span id="currentTime">0:00</span>
+      <span id="duration">0:00</span>
+    </div>
+    <div class="controls">
+      <button id="muteBtn">🔊</button>
+      <button id="prevBtn">⏮</button>
+      <button id="playBtn" class="play-btn">▶</button>
+      <button id="nextBtn">⏭</button>
+      <button id="repeatBtn">⟲</button>
+    </div>
+    <audio id="audioElement" src="folder1/song1.mp3" playsinline></audio>
+  </div>
+
+  <!-- ===== Search Overlay ===== -->
+  <div class="search-overlay" id="searchOverlay">
+    <div class="search-bar">
+      <input type="text" id="searchInput" placeholder="Search songs..." />
+      <ul class="suggestions" id="suggestionsList"></ul>
+    </div>
+  </div>
+
+  <!-- ===== Volume Overlay ===== -->
+  <div class="volume-overlay" id="volumeOverlay">
+    <input type="range" class="volume-slider" id="volumeSlider" min="0" max="1" step="0.1" value="1" />
+  </div>
+
+  <!-- ===== Online Users Overlay ===== -->
+  <div class="online-users-overlay" id="onlineUsersOverlay">
+    <div class="online-users-modal">
+      <h3>Online Users</h3>
+      <ul id="onlineUsersList"></ul>
+      <button id="closeOnlineUsersBtn">Close</button>
+    </div>
+  </div>
+
+  <!-- ===== Firebase SDKs ===== -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script>
+    // Firebase configuration & initialization
+    const firebaseConfig = {
+      apiKey: "AIzaSyB7wWmDJjUCHpUJ_EmdHZxOjAEbASmD0Zs",
+      authDomain: "rajiul-ff71f.firebaseapp.com",
+      databaseURL: "https://rajiul-ff71f-default-rtdb.firebaseio.com",
+      projectId: "rajiul-ff71f",
+      storageBucket: "rajiul-ff71f.firebasestorage.app",
+      messagingSenderId: "1032538420553",
+      appId: "1:1032538420553:web:d85d3f54bef848bd32d698",
+      measurementId: "G-VXVMYMT5K8"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+    const playerStateRef = database.ref('playerState');
+    const onlineUsersRef = database.ref('onlineUsers');
+
+    // ===== Online Users Functionality =====
+    function addCurrentUserOnline() {
+      const userDataString = localStorage.getItem('userData');
+      let userName = "Anonymous";
+      if(userDataString) {
+        try {
+          const userData = JSON.parse(userDataString);
+          userName = userData.name || "Anonymous";
+        } catch(e) { }
+      }
+      // Create a unique entry for this session and remove it on disconnect
+      const userRef = onlineUsersRef.push();
+      userRef.set({ name: userName });
+      userRef.onDisconnect().remove();
+    }
+
+    // Update online users count and list in real-time
+    onlineUsersRef.on('value', snapshot => {
+      const onlineUsers = snapshot.val();
+      let count = 0;
+      let userList = [];
+      for (const key in onlineUsers) {
+        if (onlineUsers.hasOwnProperty(key)) {
+          count++;
+          userList.push(onlineUsers[key].name);
+        }
+      }
+      document.getElementById('onlineCount').textContent = count;
+      const onlineUsersListEl = document.getElementById('onlineUsersList');
+      onlineUsersListEl.innerHTML = '';
+      userList.forEach(name => {
+        const li = document.createElement('li');
+        li.textContent = name;
+        onlineUsersListEl.appendChild(li);
+      });
+    });
+
+    // Toggle Online Users Overlay
+    const onlineUsersBtn = document.getElementById('onlineUsersBtn');
+    const onlineUsersOverlay = document.getElementById('onlineUsersOverlay');
+    const closeOnlineUsersBtn = document.getElementById('closeOnlineUsersBtn');
+    onlineUsersBtn.addEventListener('click', () => {
+      onlineUsersOverlay.classList.add('active');
+    });
+    onlineUsersOverlay.addEventListener('click', (e) => {
+      if(e.target === onlineUsersOverlay) {
+        onlineUsersOverlay.classList.remove('active');
+      }
+    });
+    closeOnlineUsersBtn.addEventListener('click', () => {
+      onlineUsersOverlay.classList.remove('active');
+    });
+
+    // ===== Player Elements & Variables =====
+    const audio = document.getElementById('audioElement');
+    const playBtn = document.getElementById('playBtn');
+    const progressBar = document.getElementById('progressBar');
+    const progressContainer = document.getElementById('progressContainer');
+    const currentTimeEl = document.getElementById('currentTime');
+    const durationEl = document.getElementById('duration');
+    const volumeSlider = document.getElementById('volumeSlider');
+    const volumeOverlay = document.getElementById('volumeOverlay');
+    const albumArt = document.getElementById('albumArt');
+    const trackTitle = document.getElementById('trackTitle');
+    const artistName = document.getElementById('artistName');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const repeatBtn = document.getElementById('repeatBtn');
+    const muteBtn = document.getElementById('muteBtn');
+    const searchToggle = document.getElementById('searchToggle');
+    const searchOverlay = document.getElementById('searchOverlay');
+    const searchInput = document.getElementById('searchInput');
+    const suggestionsList = document.getElementById('suggestionsList');
+
+    let isRepeat = false;
+    let trackHistory = [];
+
+      // Sample Tracklist
+      const trackList = [
+    
+      {
+        file: 'folder1/song1.mp3',
+        title: 'Hiriye Hiriye',
+        artist: 'Raihi Hatun',
+        cover: 'cover/cover1.jpg'
+      },
+      {
+        file: 'folder1/song2.mp3',
+        title: 'Solid Body',
+        artist: 'Bhojpuri',
+        cover: 'cover/cover2.jpg'
+      },
+      {
+        file: 'folder1/song3.mp3',
+        title: 'Hey Shona',
+        artist: 'Miss Raihi',
+        cover: 'cover/cover3.jpg'
+      },
+      { file: 'folder1/song4.mp3',
+       title: 'Rajiul hoon🥺',
+        artist: 'Live life fully',
+       cover: 'cover/cover4.jpg'
+     },
+    { 
+    file: 'folder1/song5.mp3',
+    title: 'Haan ke haan😊',
+    artist: 'Chase your dreams',
+     cover: 'cover/cover5.jpg' },
+    { 
+    file: 'folder1/song6.mp3', 
+  title: 'Keh de to ban', 
+  artist: 'Stay positive always',
+   cover: 'cover/cover6.jpg' },
+  { 
+    file: 'folder1/song7.mp3', 
+  title: 'My vocal', 
+  artist: 'Love conquers all',
+   cover: 'cover/cover7.jpg' },
+  { file: 'folder1/song8.mp3',
+   title: 'Meri Laila', 
+   artist: 'Smile every day',
+    cover: 'cover/cover8.jpg' },
+  { file: 'folder1/song9.mp3',
+   title: 'Qafirana',
+    artist: 'Believe in magic',
+     cover: 'cover/cover9.jpg' },
+  { file: 'folder1/song10.mp3',
+   title: 'Saiyyan', 
+   artist: 'Dance in rain', cover: 'cover/cover10.jpg' },
+  { file: 'folder1/song11.mp3', title: 'O-re-Piya', artist: 'Be your best', cover: 'cover/cover11.jpg' },
+  { file: 'folder1/song12.mp3', title: 'Teri Diwani', artist: 'Embrace each moment', cover: 'cover/cover12.jpg' },
+  { file: 'folder1/song13.mp3', title: 'O Rangrez', artist: 'Keep moving forward', cover: 'cover/cover13.jpg' },
+  { file: 'folder1/song14.mp3', title: 'Ishq Di Baajiyaan', artist: 'Shine like stars', cover: 'cover/cover14.jpg' },
+  { file: 'folder1/song15.mp3', title: 'Tum Tak', artist: 'Trust your heart', cover: 'cover/cover15.jpg' },
+  { file: 'folder1/song16.mp3', title: 'Ek Pyar Ka Nagma', artist: 'Happiness is key', cover: 'cover/cover16.jpg' },
+  { file: 'folder1/song17.mp3', title: 'Do Patti_ Raanjhan', artist: 'Dream big always', cover: 'cover/cover17.jpg' },
+  { file: 'folder1/song18.mp3', title: 'Shape of you', artist: 'Never give up', cover: 'cover/cover18.jpg' },
+  { file: 'folder1/song19.mp3', title: 'Tadpati Hai Teri Baatein', artist: 'Find your passion', cover: 'cover/cover19.jpg' },
+  { file: 'folder1/song20.mp3', title: 'Love Is Gone', artist: 'Make it happen', cover: 'cover/cover20.jpg' },
+  { file: 'folder1/song21.mp3', title: 'Faasle', artist: 'Carpe diem', cover: 'cover/cover21.jpg' },
+  { file: 'folder1/song22.mp3', title: 'khada hu aaj bhi wahi', artist: 'Stay strong always', cover: 'cover/cover22.jpg' },
+  { file: 'folder1/song23.mp3', title: 'Tum Ho', artist: 'Enjoy simple pleasures', cover: 'cover/cover23.jpg' },
+  { file: 'folder1/song24.mp3', title: 'Teri Aarju Na Mita Sake', artist: 'Live for today', cover: 'cover/cover24.jpg' },
+  { file: 'folder1/song25.mp3', title: 'Tu Hain Toh', artist: 'Cherish small joys', cover: 'cover/cover25.jpg' },
+  { file: 'folder1/song26.mp3', title: 'Tumhe Bhi Ishq Ho', artist: 'Keep smiling bright', cover: 'cover/cover26.jpg' },
+  { file: 'folder1/song27.mp3', title: 'Saagar Kinare', artist: 'Love without limits', cover: 'cover/cover27.jpg' },
+  { file: 'folder1/song28.mp3', title: 'Chaudhavi Shab', artist: 'Be the change', cover: 'cover/cover28.jpg' },
+  { file: 'folder1/song29.mp3', title: 'Bulleya', artist: 'Radiate positive energy', cover: 'cover/cover29.jpg' },
+  { file: 'folder1/song30.mp3', title: 'Suna Hai', artist: 'Explore new horizons', cover: 'cover/cover30.jpg' },
+  { file: 'folder1/song31.mp3', title: 'Kiska Rasta Dekhe', artist: 'Believe, achieve, succeed', cover: 'cover/cover31.jpg' },
+  { file: 'folder1/song32.mp3', title: 'Rooh Tak Basa Hai', artist: 'Dream, dare, do', cover: 'cover/cover32.jpg' },
+  { file: 'folder1/song33.mp3', title: 'Ve Kamleya', artist: 'Let love lead', cover: 'cover/cover33.jpg' },
+  { file: 'folder1/song34.mp3', title: 'Tumse Mohabbat Hai', artist: 'Live life fully', cover: 'cover/cover34.jpg' },
+  { file: 'folder1/song35.mp3', title: 'Teri aarzo na mita sake', artist: 'Chase your dreams', cover: 'cover/cover35.jpg' },
+  { file: 'folder1/song36.mp3', title: '𝑻𝒆𝒓𝒆 𝒔𝒊𝒗𝒂 𝑴𝒂𝒊𝒏', artist: 'Stay positive always', cover: 'cover/cover36.jpg' },
+  { file: 'folder1/song37.mp3', title: 'Mushk', artist: 'Love conquers all', cover: 'cover/cover37.jpg' },
+  { file: 'folder1/song38.mp3', title: 'Mehrama', artist: 'Smile every day', cover: 'cover/cover38.jpg' },
+  { file: 'folder1/song39.mp3', title: 'Dard Pahle Se', artist: 'Believe in magic', cover: 'cover/cover39.jpg' },
+  { file: 'folder1/song40.mp3', title: 'Maula Ya Salli', artist: 'Dance in rain', cover: 'cover/cover40.jpg' },
+  { file: 'folder1/song41.mp3', title: 'Asal Mein', artist: 'Be your best', cover: 'cover/cover41.jpg' },
+  { file: 'folder1/song42.mp3', title: 'Assubhu Bada', artist: 'Embrace each moment', cover: 'cover/cover42.jpg' },
+  { file: 'folder1/song43.mp3', title: 'Rahmatun LilAlameen', artist: 'Keep moving forward', cover: 'cover/cover43.jpg' },
+  { file: 'folder1/song44.mp3', title: 'Muhammad Nabina', artist: 'Shine like stars', cover: 'cover/cover44.jpg' },
+  { file: 'folder1/song45.mp3', title: 'Kabay Ki Ronaq', artist: 'Trust your heart', cover: 'cover/cover45.jpg' },
+  { file: 'folder1/song46.mp3', title: 'Bahon Mein Chale Aao', artist: 'Happiness is key', cover: 'cover/cover46.jpg' },
+  { file: 'folder1/song47.mp3', title: 'Mera Yaar', artist: 'Dream big always', cover: 'cover/cover47.jpg' },
+  { file: 'folder1/song48.mp3', title: 'Let Her Go', artist: 'Never give up', cover: 'cover/cover48.jpg' },
+  { file: 'folder1/song49.mp3', title: 'Samjho Na', artist: 'Find your passion', cover: 'cover/cover49.jpg' },
+  { file: 'folder1/song50.mp3', title: 'Ki Gaan Sonalo Bapoi', artist: 'Make it happen', cover: 'cover/cover50.jpg' },
+  { file: 'folder1/song51.mp3', title: 'Aaga Nawe Dubu Dubu', artist: 'Carpe diem', cover: 'cover/cover51.jpg' },
+  { file: 'folder1/song52.mp3', title: 'Udd Jaa Kaale Kaava', artist: 'Stay strong always', cover: 'cover/cover52.jpg' },
+  { file: 'folder1/song53.mp3', title: 'Toota Jo Kabhi Tara', artist: 'Enjoy simple pleasures', cover: 'cover/cover53.jpg' },
+  { file: 'folder1/song54.mp3', title: 'Rabba Janda', artist: 'Live for today', cover: 'cover/cover54.jpg' },
+  { file: 'folder1/song55.mp3', title: 'Phir Bhi Tumko', artist: 'Cherish small joys', cover: 'cover/cover55.jpg' },
+  { file: 'folder1/song56.mp3', title: 'Naino Ne Baandhi', artist: 'Keep smiling bright', cover: 'cover/cover56.jpg' },
+  { file: 'folder1/song57.mp3', title: 'Nachdi Phira', artist: 'Love without limits', cover: 'cover/cover57.jpg' },
+  { file: 'folder1/song58.mp3', title: 'Dil Na Jaaneya', artist: 'Be the change', cover: 'cover/cover58.jpg' },
+  { file: 'folder1/song59.mp3', title: 'Channa Ve', artist: 'Radiate positive energy', cover: 'cover/cover59.jpg' },
+  { file: 'folder1/song60.mp3', title: 'Main akela', artist: 'Explore new horizons', cover: 'cover/cover60.jpg' },
+  { file: 'folder1/song61.mp3', title: 'Mann Jogiya', artist: 'Believe, achieve, succeed', cover: 'cover/cover61.jpg' },
+  { file: 'folder1/song62.mp3', title: 'TUM SAATH HO', artist: 'Dream, dare, do', cover: 'cover/cover62.jpg' },
+  { file: 'folder1/song63.mp3', title: 'Agar Tu Hota', artist: 'Let love lead', cover: 'cover/cover63.jpg' },
+  { file: 'folder1/song64.mp3', title: 'Pyar Hua', artist: 'Live life fully', cover: 'cover/cover64.jpg' },
+  { file: 'folder1/song65.mp3', title: 'Le Aaunga', artist: 'Chase your dreams', cover: 'cover/cover65.jpg' },
+  { file: 'folder1/song66.mp3', title: 'Aalas Ka Pedh', artist: 'Stay positive always', cover: 'cover/cover66.jpg' },
+  { file: 'folder1/song67.mp3', title: 'Farq Hai', artist: 'Love conquers all', cover: 'cover/cover67.jpg' },
+  { file: 'folder1/song68.mp3', title: 'Sathiya', artist: 'Smile every day', cover: 'cover/cover68.jpg' },
+  { file: 'folder1/song69.mp3', title: 'Hasbi Rabbi', artist: 'Believe in magic', cover: 'cover/cover69.jpg' },
+  { file: 'folder1/song70.mp3', title: 'Jo Tum mere ho', artist: 'Dance in rain', cover: 'cover/cover70.jpg' },
+  { file: 'folder1/song71.mp3', title: 'Khudaya khair', artist: 'Be your best', cover: 'cover/cover71.jpg' },
+  { file: 'folder1/song72.mp3', title: 'Hai Tamanna Hamen', artist: 'Embrace each moment', cover: 'cover/cover72.jpg' },
+  { file: 'folder1/song73.mp3', title: 'KUN ANTA', artist: 'Keep moving forward', cover: 'cover/cover73.jpg' },
+  { file: 'folder1/song74.mp3', title: 'Tera Mera Rishta', artist: 'Shine like stars', cover: 'cover/cover74.jpg' },
+  { file: 'folder1/song75.mp3', title: 'Aankhon Se Batana', artist: 'Trust your heart', cover: 'cover/cover75.jpg' },
+  { file: 'folder1/song76.mp3', title: 'Mohabbat Dil Ka Sakoon', artist: 'Happiness is key', cover: 'cover/cover76.jpg' },
+  { file: 'folder1/song77.mp3', title: 'Tasbih', artist: 'Dream big always', cover: 'cover/cover77.jpg' },
+  { file: 'folder1/song78.mp3', title: 'RIHA', artist: 'Never give up', cover: 'cover/cover78.jpg' },
+  { file: 'folder1/song79.mp3', title: 'GUL', artist: 'Find your passion', cover: 'cover/cover79.jpg' },
+  { file: 'folder1/song80.mp3', title: 'Hadidth', artist: 'Make it happen', cover: 'cover/cover80.jpg' },
+  { file: 'folder1/song81.mp3', title: 'Tera Ghata', artist: 'Carpe diem', cover: 'cover/cover81.jpg' },
+  { file: 'folder1/song82.mp3', title: 'Way Of Tears', artist: 'Stay strong always', cover: 'cover/cover82.jpg' },
+  { file: 'folder1/song83.mp3', title: 'Timro Pratiksa', artist: 'Enjoy simple pleasures', cover: 'cover/cover83.jpg' },
+  { file: 'folder1/song84.mp3', title: 'Weeding Nasheed', artist: 'Live for today', cover: 'cover/cover84.jpg' },
+  { file: 'folder1/song85.mp3', title: 'Titanic', artist: 'Cherish small joys', cover: 'cover/cover85.jpg' },
+  { file: 'folder1/song86.mp3', title: 'Hawa Banke', artist: 'Keep smiling bright', cover: 'cover/cover86.jpg' },
+  { file: 'folder1/song87.mp3', title: 'Dil Diyan Gallan', artist: 'Love without limits', cover: 'cover/cover87.jpg' },
+  { file: 'folder1/song88.mp3', title: 'Milo Na Tum', artist: 'Be the change', cover: 'cover/cover88.jpg' },
+  { file: 'folder1/song89.mp3', title: 'Humsafar', artist: 'Radiate positive energy', cover: 'cover/cover89.jpg' },
+  { file: 'folder1/song90.mp3', title: 'Jaan Ban Gaye', artist: 'Explore new horizons', cover: 'cover/cover90.jpg' },
+  { file: 'folder1/song91.mp3', title: 'Khoya khoya', artist: 'Believe, achieve, succeed', cover: 'cover/cover91.jpg' },
+  { file: 'folder1/song92.mp3', title: 'Her Go x Husn', artist: 'Dream, dare, do', cover: 'cover/cover92.jpg' },
+  { file: 'folder1/song93.mp3', title: 'Maine Khud Ko', artist: 'Let love lead', cover: 'cover/cover93.jpg' },
+  { file: 'folder1/song94.mp3', title: 'Hadidth 2', artist: 'Live life fully', cover: 'cover/cover94.jpg' },
+  { file: 'folder1/song95.mp3', title: 'Teri jhuki Nazar', artist: 'Chase your dreams', cover: 'cover/cover95.jpg' },
+  { file: 'folder1/song96.mp3', title: 'Panchhi Bole', artist: 'Stay positive always', cover: 'cover/cover96.jpg' },
+  { file: 'folder1/song97.mp3', title: 'Let Me Down', artist: 'Love conquers all', cover: 'cover/cover97.jpg' },
+  { file: 'folder1/song98.mp3', title: 'Without You', artist: 'Smile every day', cover: 'cover/cover98.jpg' },
+  { file: 'folder1/song99.mp3', title: '𝐒𝐚𝐝 𝐀𝐫𝐚𝐛𝐢𝐜 𝐓𝐮𝐫𝐤𝐢𝐬𝐡', artist: 'Believe in magic', cover: 'cover/cover99.jpg' },
+  { file: 'folder1/song100.mp3', title: 'Last Msg to Her😌', artist: 'Dance in rain', cover: 'cover/cover100.jpg' },
+  {
+    file: 'folder1/song101.mp3',
+    title: 'Suno- Na Sangemarmar',
+    artist: 'Arijit sing',
+    cover: 'cover/cover101.jpg'
+  },
+  {
+    file: 'folder1/song102.mp3',
+    title: 'Tere sang yaara',
+    artist: 'Care ur love',
+    cover: 'cover/cover102.jpg'
+  },
+  {
+    file: 'folder1/song103.mp3',
+    title: 'Breakup song',
+    artist: 'Anushka Virta ka Bou',
+    cover: 'cover/cover103.jpg'
+  },
+  {
+    file: 'folder1/song104.mp3',
+    title: 'Hamma Hamma',
+    artist: 'Bisner Dance',
+    cover: 'cover/cover104.jpg'
+  },
+  {
+    file: 'folder1/song105.mp3',
+    title: 'Titliyaan',
+    artist: 'Dont Know',
+    cover: 'cover/cover105.jpg'
+  },
+  {
+    file: 'folder1/song106.mp3',
+    title: 'Udi Udi jaye',
+    artist: 'King khans movie',
+    cover: 'cover/cover106.jpg'
+  },
+  {
+    file: 'folder1/song107.mp3',
+    title: 'Vaste',
+    artist: 'Love decited by God',
+    cover: 'cover/cover107.jpg'
+  },
+  {
+    file: 'folder1/song108.mp3',
+    title: 'Mard nahi fav',
+    artist: 'ete gan vuli jang bar bar',
+    cover: 'cover/cover108.jpg'
+  },
+  {
+    file: 'folder1/song109.mp3',
+    title: 'zihal e Miskin',
+    artist: 'Rise to greatness',
+    cover: 'cover/cover109.jpg'
+  },
+  {
+    file: 'folder1/song110.mp3',
+    title: 'Prem Ratan Dhan payo',
+    artist: 'Salman khan',
+    cover: 'cover/cover110.jpg'
+  },
+  {
+    file: 'folder1/song111.mp3',
+    title: 'Paon ki juti',
+    artist: 'Ye singer to ladki hai',
+    cover: 'cover/cover111.jpg'
+  },
+  {
+    file: 'folder1/song112.mp3',
+    title: 'Galti se Mistake',
+    artist: 'Jagga jasoos',
+    cover: 'cover/cover112.jpg'
+  },
+  {
+    file: 'folder1/song113.mp3',
+    title: 'Fillhal 2',
+    artist: 'Sakshi singh',
+    cover: 'cover/cover113.jpg'
+  },
+  {
+    file: 'folder1/song114.mp3',
+    title: 'Ding Dang',
+    artist: 'Munna Michel',
+    cover: 'cover/cover114.jpg'
+  },
+  {
+    file: 'folder1/song115.mp3',
+    title: 'Badri ki Dulhaniya',
+    artist: 'How funny song nah',
+    cover: 'cover/cover115.jpg'
+  },
+  {
+    file: 'folder1/song116.mp3',
+    title: 'Duniya jala denge Animal',
+    artist: 'Ranveer kapoor Animal',
+    cover: 'cover/cover116.jpg'
+  },
+  {
+    file: 'folder1/song117.mp3',
+    title: 'Pehlebhi main',
+    artist: 'Animal',
+    cover: 'cover/cover117.jpg'
+  },
+  {
+    file: 'folder1/song118.mp3',
+    title: 'Aaj ki Raat',
+    artist: 'Stree Nora Fateh',
+    cover: 'cover/cover118.jpg'
+  },
+  {
+    file: 'folder1/song119.mp3',
+    title: 'Tere Bina Best Audio',
+    artist: 'A.R. Rahman',
+    cover: 'cover/cover119.jpg'
+  },
+  {
+    file: 'folder1/song120.mp3',
+    title: 'Kenekoi Bujao',
+    artist: '13 Movie',
+    cover: 'cover/cover120.jpg'
+  },
+  {
+    file: 'folder1/song121.mp3',
+    title: 'Junaki',
+    artist: '13 Movie',
+    cover: 'cover/cover121.jpg'
+  },
+  {
+    file: 'folder1/song122.mp3',
+    title: ' Xewali',
+    artist: 'Bhaskar Opswel',
+    cover: 'cover/cover122.jpg'
+  },
+  {
+    file: 'folder1/song123.mp3',
+    title: 'TUMAR BIYAR DINAKHON',
+    artist: 'ANJANA 2009',
+    cover: 'cover/cover123.jpg'
+  },
+  {
+    file: 'folder1/song124.mp3',
+    title: 'Tum Jo Aaye Jindagi Mein',
+    artist: 'Rahat Fateh Ali khan',
+    cover: 'cover/cover124.jpg'
+  },
+  {
+    file: 'folder1/song125.mp3',
+    title: 'TUM SE HI',
+    artist: 'Mohit Chauhan',
+    cover: 'cover/cover125.jpg'
+  },
+  {
+    file: 'folder1/song126.mp3',
+    title: 'Pee Loon',
+    artist: 'Emraan Hashmi',
+    cover: 'cover/cover126.jpg'
+  },
+  {
+    file: 'folder1/song127.mp3',
+    title: 'Tu Jaane Na',
+    artist: ' Atif Aslam',
+    cover: 'cover/cover127.jpg'
+  },
+  {
+    file: 'folder1/song128.mp3',
+    title: 'Main Agar Kahoon',
+    artist: 'Shahrukh Khan,Deepika Padukone',
+    cover: 'cover/cover128.jpg'
+  },
+  {
+    file: 'folder1/song129.mp3',
+    title: 'Dekha Ek Khwab ',
+    artist: 'Amitabh Bachchan, Rekha',
+    cover: 'cover/cover129.jpg'
+  },
+  {
+    file: 'folder1/song130.mp3',
+    title: 'Sukoon Mila ',
+    artist: 'Priyanka Chopra & Darshan Gandas',
+    cover: 'cover/cover130.jpg'
+  },
+  {
+    file: 'folder1/song131.mp3',
+    title: 'Aankhon Mein Teri Ajab Si',
+    artist: ' K.K. Shahrukh Khan',
+    cover: 'cover/cover131.jpg'
+  },
+  {
+    file: 'folder1/song132.mp3',
+    title: 'Tum Hi Ho',
+    artist: 'Aashique 2',
+    cover: 'cover/cover132.jpg'
+  },
+  {
+    file: 'folder1/song133.mp3',
+    title: 'Sajni',
+    artist: 'Arijit Sing hihi',
+    cover: 'cover/cover133.jpg'
+  },
+  {
+    file: 'folder1/song134.mp3',
+    title: 'Heartless',
+    artist: 'Badshah ft. Aastha Gill',
+    cover: 'cover/cover134.jpg'
+  },
+  {
+    file: 'folder1/song135.mp3',
+    title: 'Aawara Shaam Hai',
+    artist: 'Meet Bros Ft. Piyush Mehroliyaa',
+    cover: 'cover/cover135.jpg'
+  },
+  {
+    file: 'folder1/song136.mp3',
+    title: 'DIL KO KARRAR AAYA Reprise',
+    artist: ' Neha Kakkar cover',
+    cover: 'cover/cover136.jpg'
+  },
+  {
+    file: 'folder1/song137.mp3',
+    title: 'Halka Halka ',
+    artist: 'FANNEY KHAN',
+    cover: 'cover/cover137.jpg'
+  },
+  {
+    file: 'folder1/song138.mp3',
+    title: 'Mere Bina',
+    artist: 'Emraan Hashm',
+    cover: 'cover/cover138.jpg'
+  },
+  {
+    file: 'folder1/song139.mp3',
+    title: 'Khuda Jaane',
+    artist: 'Vishal and Shekhar',
+    cover: 'cover/cover139.jpg'
+  },
+  {
+    file: 'folder1/song140.mp3',
+    title: 'Tera Hone Laga Hoon',
+    artist: 'Atif Aslam',
+    cover: 'cover/cover140.jpg'
+  },
+  {
+    file: 'folder1/song141.mp3',
+    title: 'I love you',
+    artist: ' Salman khan, Kareena Kapoor',
+    cover: 'cover/cover141.jpg'
+  },
+  {
+    file: 'folder1/song142.mp3',
+    title: 'Laapata',
+    artist: 'KK | Palak Muchhal | Sohail Sen',
+    cover: 'cover/cover142.jpg'
+  },
+  {
+    file: 'folder1/song143.mp3',
+    title: 'Heruwabo Nukhuju',
+    artist: ' David | Rabbani Soyam',
+    cover: 'cover/cover143.jpg'
+  },
+  {
+    file: 'folder1/song144.mp3',
+    title: 'Tera Hua',
+    artist: 'Atif Aslam | Loveyatri ',
+    cover: 'cover/cover144.jpg'
+  },
+  {
+    file: 'folder1/song145.mp3',
+    title: 'Raihi❤︎',
+    artist: 'Rajiul Hq',
+    cover: 'cover/cover145.jpg'
+  },
+  {
+    file: 'folder1/song146.mp3',
+    title: 'Girl i need You',
+    artist: 'Zubin Nattu pagla',
+    cover: 'cover/cover146.jpg'
+  },
+  {
+    file: 'folder1/song147.mp3',
+    title: 'Maahi ',
+    artist: 'dhew kai ala writer',
+    cover: 'cover/cover147.jpg'
+  },
+  {
+    file: 'folder1/song148.mp3',
+    title: 'Woh Lamhe Woh Baatein',
+    artist: 'zeher',
+    cover: 'cover/cover148.jpg'
+  },
+  {
+    file: 'folder1/song149.mp3',
+    title: 'Baby Doll',
+    artist: 'Ragini MMS 2',
+    cover: 'cover/cover149.jpg'
+  },
+  {
+    file: 'folder1/song150.mp3',
+    title: 'Khali Khali Dil',
+    artist: 'Sunny Leone Arbaaz Khan',
+    cover: 'cover/cover150.jpg'
+  },
+  {
+    file: 'folder1/song151.mp3',
+    title: 'Perfect',
+    artist: 'Ed Sheeran',
+    cover: 'cover/cover151.jpg'
+  },
+  {
+    file: 'folder1/song152.mp3',
+    title: 'Ke Tui Bol',
+    artist: 'Arijit Singh',
+    cover: 'cover/cover152.jpg'
+  },
+  {
+    file: 'folder1/song153.mp3',
+    title: 'Ami Tomar kache',
+    artist: 'Arijit Singh',
+    cover: 'cover/cover153.jpg'
+  },
+  {
+    file: 'folder1/song154.mp3',
+    title: 'Zara Sa',
+    artist: 'Emraan Hashmi, Sonal Chauhan ',
+    cover: 'cover/cover154.jpg'
+  },
+  {
+    file: 'folder1/song155.mp3',
+    title: 'SAB TERA',
+    artist: 'Baaghi',
+    cover: 'cover/cover155.jpg'
+  },
+  {
+    file: 'folder1/song156.mp3',
+    title: 'Ankhon Mein Basa Lunga',
+    artist: 'Mugdha,Sneha,Nishant',
+    cover: 'cover/cover156.jpg'
+  },
+  {
+    file: 'folder1/song157.mp3',
+    title: 'Ride It Ghichri michri gan',
+    artist: 'Hindi version',
+    cover: 'cover/cover157.jpg'
+  },
+  {
+    file: 'folder1/song158.mp3',
+    title: 'Ishqiya OST',
+    artist: 'Rajiul and no one',
+    cover: 'cover/cover158.jpg'
+  },
+  {
+    file: 'folder1/song159.mp3',
+    title: 'Tum Todo Na (Female)',
+    artist: 'Suggest by Raihi',
+    cover: 'cover/cover159.jpg'
+  },
+  {
+    file: 'folder1/song160.mp3',
+    title: 'Tu Chale',
+    artist: 'Arijit singh',
+    cover: 'cover/cover160.jpg'
+  },
+  {
+    file: 'folder1/song161.mp3',
+    title: 'Papi chulo',
+    artist: 'Ghatiya aadmi ',
+    cover: 'cover/cover161.jpg'
+  },
+  {
+    file: 'folder1/song162.mp3',
+    title: 'Kal Ho Naa Ho ',
+    artist: 'shah Rukh Khan,',
+    cover: 'cover/cover162.jpg'
+  },
+  {
+    file: 'folder1/song163.mp3',
+    title: ' DJ Waley Babu',
+    artist: 'Badshah Dhepra',
+    cover: 'cover/cover163.jpg'
+  },
+  {
+    file: 'folder1/song164.mp3',
+    title: 'Afghan Jalebi ',
+    artist: 'Saif Ali Khan Katrina',
+    cover: 'cover/cover164.jpg'
+  },
+  {
+    file: 'folder1/song165.mp3',
+    title: 'Kahani Suno 2.0',
+    artist: 'Kaifi Khalil',
+    cover: 'cover/cover165.jpg'
+  },
+  {
+    file: 'folder1/song166.mp3',
+    title: 'Baby Girl',
+    artist: 'Guru Randhawa Dhvani Bhanushali',
+    cover: 'cover/cover166.jpg'
+  },
+  {
+    file: 'folder1/song167.mp3',
+    title: 'Lehanga',
+    artist: 'Jass Manak',
+    cover: 'cover/cover167.jpg'
+  },
+  {
+    file: 'folder1/song168.mp3',
+    title: 'Lamberghini',
+    artist: 'Dhoni manusher Car',
+    cover: 'cover/cover168.jpg'
+  },
+  {
+    file: 'folder1/song169.mp3',
+    title: 'Leja Re',
+    artist: 'Dhvani Bhanushali',
+    cover: 'cover/cover169.jpg'
+  },
+  {
+    file: 'folder1/song170.mp3',
+    title: 'Thoda Thoda Pyaar',
+    artist: 'Sidharth Malhotra,Neha Sharma',
+    cover: 'cover/cover170.jpg'
+  },
+  {
+    file: 'folder1/song171.mp3',
+    title: ' Teri Meri',
+    artist: 'Salman khan karina kapoor',
+    cover: 'cover/cover171.jpg'
+  },
+  {
+    file: 'folder1/song172.mp3',
+    title: 'Ve Maahi',
+    artist: 'lomba dari ela Akshay',
+    cover: 'cover/cover172.jpg'
+  },
+  {
+    file: 'folder1/song173.mp3',
+    title: 'O Saathi ',
+    artist: 'Tiger pagla',
+    cover: 'cover/cover173.jpg'
+  },
+  {
+    file: 'folder1/song174.mp3',
+    title: 'Tujh Mein Rab Dikhta Hai',
+    artist: 'Shah Rukh Khan',
+    cover: 'cover/cover174.jpg'
+  },
+  {
+    file: 'folder1/song175.mp3',
+    title: 'Chammak Challo',
+    artist: 'SRK Raone film',
+    cover: 'cover/cover175.jpg'
+  },
+  {
+    file: 'folder1/song176.mp3',
+    title: 'Saree Ke Fall Sa|',
+    artist: '|Pritam|Shahid & Sonakshi',
+    cover: 'cover/cover176.jpg'
+  },
+  {
+    file: 'folder1/song177.mp3',
+    title: 'Sakhiyan2.0',
+    artist: 'Vaani Kapoor |BellBottom',
+    cover: 'cover/cover177.jpg'
+  },
+  {
+    file: 'folder1/song178.mp3',
+    title: 'Raataan',
+    artist: 'Shershaah | Sidharth – Kiara',
+    cover: 'cover/cover178.jpg'
+  },
+  {
+    file: 'folder1/song179.mp3',
+    title: 'Bojhena Shey Bojhena ',
+    artist: 'Arijit Singh',
+    cover: 'cover/cover179.jpg'
+  },
+  {
+    file: 'folder1/song180.mp3',
+    title: 'Parbona',
+    artist: 'Bengali',
+    cover: 'cover/cover180.jpg'
+  },
+  {
+    file: 'folder1/song181.mp3',
+    title: 'Oporadhi ',
+    artist: 'Ankur Mahamud Feat',
+    cover: 'cover/cover181.jpg'
+  },
+  {
+    file: 'folder1/song182.mp3',
+    title: 'Rahogi Meri',
+    artist: 'Sara Ali Khan',
+    cover: 'cover/cover182.jpg'
+  },
+  {
+    file: 'folder1/song183.mp3',
+    title: 'Humraah',
+    artist: 'Aditya R K, Disha P Anil',
+    cover: 'cover/cover183.jpg'
+  },
+  {
+    file: 'folder1/song184.mp3',
+    title: 'Main Rahoon Ya Na Rahoon',
+    artist: 'Emraan Hashmi, Esha Gupta',
+    cover: 'cover/cover184.jpg'
+  },
+  {
+    file: 'folder1/song185.mp3',
+    title: 'Ishq Sufiyana',
+    artist: 'Emraan Hashmi,Vidya Balan',
+    cover: 'cover/cover185.jpg'
+  },
+  {
+    file: 'folder1/song186.mp3',
+    title: 'Rabba Rabba',
+    artist: 'Mohit Chauhan ',
+    cover: 'cover/cover186.jpg'
+  },
+  {
+    file: 'folder1/song187.mp3',
+    title: 'Lae Dooba',
+    artist: 'Sidharth Malhotra, Rakul Preet',
+    cover: 'cover/cover187.jpg'
+  },
+  {
+    file: 'folder1/song188.mp3',
+    title: 'Soch Hardy Sandu',
+    artist: 'Romantic Punjabi',
+    cover: 'cover/cover188.jpg'
+  },
+  {
+    file: 'folder1/song189.mp3',
+    title: 'Qareeb ',
+    artist: 'Missing',
+    cover: 'cover/cover189.jpg'
+  },
+  {
+    file: 'folder1/song190.mp3',
+    title: 'Soch Na Sake',
+    artist: 'Akshay Kumar',
+    cover: 'cover/cover190.jpg'
+  },
+  {
+    file: 'folder1/song191.mp3',
+    title: 'Let me love you',
+    artist: 'Justin bibber',
+    cover: 'cover/cover191.jpg'
+  },
+  {
+    file: 'folder1/song192.mp3',
+    title: 'Despacito',
+    artist: 'Luis Fonsi',
+    cover: 'cover/cover192.jpg'
+  },
+  {
+    file: 'folder1/song193.mp3',
+    title: 'Baby',
+    artist: 'Justin Bieber',
+    cover: 'cover/cover193.jpg'
+  },
+  {
+    file: 'folder1/song194.mp3',
+    title: 'See You Again',
+    artist: 'Charlie Puth',
+    cover: 'cover/cover194.jpg'
+  },
+  {
+    file: 'folder1/song195.mp3',
+    title: 'Kaise Hua',
+    artist: 'Kabir Singh',
+    cover: 'cover/cover195.jpg'
+  },
+  {
+    file: 'folder1/song196.mp3',
+    title: 'Mann Mera',
+    artist: 'Tina Desai & Rajeev',
+    cover: 'cover/cover196.jpg'
+  },
+  {
+    file: 'folder1/song197.mp3',
+    title: 'Manike',
+    artist: 'Nora,Sidharth',
+    cover: 'cover/cover197.jpg'
+  },
+  {
+    file: 'folder1/song198.mp3',
+    title: 'Ya lili ya lila',
+    artist: 'childhood fav song',
+    cover: 'cover/cover198.jpg'
+  },
+  {
+    file: 'folder1/song199.mp3',
+    title: ' Galliyan Song',
+    artist: 'Ankit Tiwari ',
+    cover: 'cover/cover199.jpg'
+  },
+  {
+    file: 'folder1/song200.mp3',
+    title: 'Ankit Tiwari ',
+    artist: 'Disneys ABCD 2',
+    cover: 'cover/cover200.jpg'
+  },
+  {
+    file: 'folder1/song201.mp3',
+    title: 'Ishq ',
+    artist: 'Lost found',
+    cover: 'cover/cover201.jpg'
+  },
+  {
+    file: 'folder1/song202.mp3',
+    title: 'Piya Aaye Na ',
+    artist: 'ditya Roy Kapur',
+    cover: 'cover/cover202.jpg'
+  },
+  {
+    file: 'folder1/song203.mp3',
+    title: 'CHAHUN MEIN YA NAA ',
+    artist: 'sraddha Kapoor',
+    cover: 'cover/cover203.jpg'
+  },
+  {
+    file: 'folder1/song204.mp3',
+    title: 'JAB TAK',
+    artist: 'M.S. DHONI',
+    cover: 'cover/cover204.jpg'
+  },
+  {
+    file: 'folder1/song205.mp3',
+    title: 'Mast magan',
+    artist: 'Arijit singh',
+    cover: 'cover/cover205.jpg'
+  },
+  {
+    file: 'folder1/song206.mp3',
+    title: 'Jeene Laga Hoon',
+    artist: 'Ramaiya Vastavaiya',
+    cover: 'cover/cover206.jpg'
+  }
+    ];
+
+
+    let currentTrack = Math.floor(Math.random() * trackList.length);
+    updateTrackInfo();
+
+    function updateFirebaseState() {
+      const state = {
+        isPlaying: !audio.paused,
+        currentTime: audio.currentTime,
+        volume: audio.volume,
+        trackIndex: currentTrack
+      };
+      playerStateRef.set(state);
+    }
+
+    function togglePlay() {
+      audio.paused ? audio.play() : audio.pause();
+    }
+    playBtn.addEventListener('click', () => { togglePlay(); updateFirebaseState(); });
+    audio.addEventListener('play', () => {
+      playBtn.innerHTML = 'II';
+      albumArt.parentElement.classList.add('rotate');
+      updateFirebaseState();
+      updateMediaSessionPlaybackState();
+    });
+    audio.addEventListener('pause', () => {
+      playBtn.innerHTML = '▶';
+      albumArt.parentElement.classList.remove('rotate');
+      updateFirebaseState();
+      updateMediaSessionPlaybackState();
+    });
+    audio.addEventListener('timeupdate', () => {
+      if(audio.duration) {
+        const progress = (audio.currentTime / audio.duration) * 100;
+        progressBar.style.width = progress + '%';
+        currentTimeEl.textContent = formatTime(audio.currentTime);
+      }
+    });
+    audio.addEventListener('loadedmetadata', () => {
+      durationEl.textContent = formatTime(audio.duration);
+    });
+    progressContainer.addEventListener('click', (e) => {
+      const rect = progressContainer.getBoundingClientRect();
+      const pos = (e.clientX - rect.left) / rect.width;
+      audio.currentTime = pos * audio.duration;
+      updateFirebaseState();
+    });
+    volumeSlider.addEventListener('input', (e) => {
+      audio.volume = e.target.value;
+      updateFirebaseState();
+    });
+    muteBtn.addEventListener('click', () => {
+      volumeOverlay.classList.toggle('active');
+      muteBtn.innerHTML = volumeOverlay.classList.contains('active') ? '🔉' : '🔊';
+    });
+    repeatBtn.addEventListener('click', () => {
+      isRepeat = !isRepeat;
+      repeatBtn.style.background = isRepeat ? 'linear-gradient(90deg, #6a11cb, #2575fc)' : 'rgba(255, 255, 255, 0.2)';
+    });
+    nextBtn.addEventListener('click', () => {
+      const wasPlaying = !audio.paused;
+      trackHistory.push(currentTrack);
+      let newTrack;
+      if (trackList.length > 1) {
+        do { newTrack = Math.floor(Math.random() * trackList.length); } while (newTrack === currentTrack);
+      } else { newTrack = currentTrack; }
+      currentTrack = newTrack;
+      updateTrackInfo();
+      if(wasPlaying) audio.play();
+      updateFirebaseState();
+    });
+    prevBtn.addEventListener('click', () => {
+      const wasPlaying = !audio.paused;
+      if(trackHistory.length > 0) {
+        currentTrack = trackHistory.pop();
+        updateTrackInfo();
+        if(wasPlaying) audio.play();
+        updateFirebaseState();
+      }
+    });
+    audio.addEventListener('ended', () => {
+      if(isRepeat) { audio.currentTime = 0; audio.play(); updateFirebaseState(); return; }
+      trackHistory.push(currentTrack);
+      let newTrack;
+      if (trackList.length > 1) {
+        do { newTrack = Math.floor(Math.random() * trackList.length); } while (newTrack === currentTrack);
+      } else { newTrack = currentTrack; }
+      currentTrack = newTrack;
+      updateTrackInfo();
+      audio.play();
+      updateFirebaseState();
+    });
+    function formatTime(seconds) {
+      const minutes = Math.floor(seconds / 60);
+      seconds = Math.floor(seconds % 60);
+      return minutes + ':' + (seconds < 10 ? '0' : '') + seconds;
+    }
+    function updateTrackInfo() {
+      const track = trackList[currentTrack];
+      audio.src = track.file;
+      albumArt.src = track.cover;
+      trackTitle.textContent = track.title;
+      artistName.textContent = track.artist;
+      audio.load();
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: track.title,
+          artist: track.artist,
+          album: 'Nexus Wave',
+          artwork: [{ src: track.cover, sizes: '260x260', type: 'image/jpeg' }]
+        });
+        navigator.mediaSession.setActionHandler('play', togglePlay);
+        navigator.mediaSession.setActionHandler('pause', togglePlay);
+        navigator.mediaSession.setActionHandler('previoustrack', () => {
+          if(trackHistory.length > 0) {
+            currentTrack = trackHistory.pop();
+            updateTrackInfo();
+            audio.play();
+            updateFirebaseState();
+          }
+        });
+        navigator.mediaSession.setActionHandler('nexttrack', () => {
+          const wasPlaying = !audio.paused;
+          trackHistory.push(currentTrack);
+          let newTrack;
+          if (trackList.length > 1) {
+            do { newTrack = Math.floor(Math.random() * trackList.length); } while (newTrack === currentTrack);
+          } else { newTrack = currentTrack; }
+          currentTrack = newTrack;
+          updateTrackInfo();
+          if(wasPlaying) audio.play();
+          updateFirebaseState();
+        });
+      }
+    }
+    function updateMediaSessionPlaybackState() {
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.playbackState = audio.paused ? "paused" : "playing";
+      }
+    }
+    playerStateRef.on('value', (snapshot) => {
+      const state = snapshot.val();
+      if(state) {
+        if(state.trackIndex !== currentTrack) { currentTrack = state.trackIndex; updateTrackInfo(); }
+        if(Math.abs(audio.currentTime - state.currentTime) > 1) { audio.currentTime = state.currentTime; }
+        state.isPlaying && audio.paused ? audio.play() : (!state.isPlaying && !audio.paused && audio.pause());
+        if(audio.volume !== state.volume) {
+          audio.volume = state.volume;
+          volumeSlider.value = state.volume;
+        }
+      }
+    });
+    searchToggle.addEventListener('click', () => { searchOverlay.classList.add('active'); searchInput.focus(); });
+    searchOverlay.addEventListener('click', (e) => {
+      if(e.target === searchOverlay) {
+        searchOverlay.classList.remove('active');
+        searchInput.value = '';
+        suggestionsList.innerHTML = '';
+      }
+    });
+    searchInput.addEventListener('input', () => {
+      const query = searchInput.value.trim().toLowerCase();
+      suggestionsList.innerHTML = '';
+      if(query) {
+        const suggestions = trackList.filter(track => track.title.toLowerCase().includes(query));
+        suggestions.forEach(track => {
+          const li = document.createElement('li');
+          li.textContent = track.title;
+          li.addEventListener('click', () => {
+            trackHistory.push(currentTrack);
+            currentTrack = trackList.indexOf(track);
+            updateTrackInfo();
+            audio.currentTime = 0;
+            audio.play();
+            updateFirebaseState();
+            searchOverlay.classList.remove('active');
+            searchInput.value = '';
+            suggestionsList.innerHTML = '';
+          });
+          suggestionsList.appendChild(li);
+        });
+      }
+    });
+
+    // Add current user to onlineUsers on every page load (even on refresh)
+    document.addEventListener('DOMContentLoaded', () => {
+      if(localStorage.getItem('signedUp')) {
+        addCurrentUserOnline();
+      }
+    });
+  </script>
+
+  <!-- ===== Sign Up Form Script ===== -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const signupContainer = document.getElementById('signupContainer');
+      if (localStorage.getItem('signedUp')) {
+        signupContainer.style.display = 'none';
+      } else {
+        signupContainer.style.display = 'flex';
+      }
+      
+      const steps = document.querySelectorAll('.form-step');
+      let currentStep = 0;
+      function showStep(step) {
+        steps.forEach((s, index) => { s.classList.toggle('active', index === step); });
+      }
+      showStep(currentStep);
+      
+      // Step 1: Name
+      document.getElementById('nextStep1').addEventListener('click', () => {
+        const nameInput = document.getElementById('name');
+        if(nameInput.value.trim() !== '') {
+          currentStep = 1;
+          showStep(currentStep);
+        } else {
+          alert('Please enter your name.');
+        }
+      });
+      
+      // ===== Birth Year Selector (Step 2) =====
+      let currentYear = 1990; // Default year
+      const yearDisplay = document.getElementById('yearDisplay');
+      const yearUp = document.getElementById('yearUp');
+      const yearDown = document.getElementById('yearDown');
+      yearDisplay.textContent = currentYear;
+      yearUp.addEventListener('click', () => {
+        if(currentYear < 2025) {
+          currentYear++;
+          yearDisplay.textContent = currentYear;
+          yearDisplay.classList.remove('animate');
+          void yearDisplay.offsetWidth;
+          yearDisplay.classList.add('animate');
+        }
+      });
+      yearDown.addEventListener('click', () => {
+        if(currentYear > 1900) {
+          currentYear--;
+          yearDisplay.textContent = currentYear;
+          yearDisplay.classList.remove('animate');
+          void yearDisplay.offsetWidth;
+          yearDisplay.classList.add('animate');
+        }
+      });
+      
+      document.getElementById('nextStep2').addEventListener('click', () => {
+        // No need to validate since a year is always selected
+        currentStep = 2;
+        showStep(currentStep);
+      });
+      document.getElementById('prevStep2').addEventListener('click', () => {
+        currentStep = 0;
+        showStep(currentStep);
+      });
+      
+      // Step 3: Gmail
+      document.getElementById('prevStep3').addEventListener('click', () => {
+        currentStep = 1;
+        showStep(currentStep);
+      });
+      document.getElementById('signupBtn').addEventListener('click', () => {
+        const gmailInput = document.getElementById('gmail');
+        if(gmailInput.value.trim() !== '') {
+          const userData = {
+            name: document.getElementById('name').value.trim(),
+            birthYear: currentYear,
+            gmail: gmailInput.value.trim()
+          };
+          localStorage.setItem('userData', JSON.stringify(userData));
+          localStorage.setItem('signedUp', 'true');
+          signupContainer.style.display = 'none';
+          // Add current user to onlineUsers immediately on sign up
+          addCurrentUserOnline();
+        } else {
+          alert('Please enter your Gmail.');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
